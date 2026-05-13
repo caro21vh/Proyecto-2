@@ -1,21 +1,7 @@
+from producto import Producto
 # ============================================================
-# TODO: cuando el archivo tarea.py esté listo, reemplazar este
-# stub por:  from tarea import Tarea
+from tarea import Tarea
 # ============================================================
-class Tarea:
-    def __init__(self, id, nombre, tiempo_procesamiento):
-        self.id = id
-        self.nombre = nombre
-        self.tiempo_procesamiento = tiempo_procesamiento
-        self.ocupada = False
-        self.cola_productos = []
-    def ejecutar(self, producto): pass
-    def avanzar_ciclo(self): return None
-    def obtener_estado(self): return f"  Tarea [{self.id}] {self.nombre}"
-
-
-# ============================================================
-
 
 class Proceso:
     """
