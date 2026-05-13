@@ -1,6 +1,5 @@
-# ============================================================
 from tarea import Tarea
-# ============================================================
+
 
 class Proceso:
     """
@@ -12,7 +11,7 @@ class Proceso:
     def __init__(self, id: int, nombre: str, es_inicial: bool = False, es_final: bool = False):
         self.id = id
         self.nombre = nombre
-        self.tareas: list[tarea_.Tarea] = []
+        self.tareas: list[Tarea] = []
         self.proceso_anterior: "Proceso | None" = None
         self.es_inicial = es_inicial
         self.es_final = es_final
@@ -21,7 +20,7 @@ class Proceso:
     # Métodos del diagrama UML
     # ------------------------------------------------------------------
 
-    def agregar_tarea(self, tarea: tarea_.Tarea) -> None:
+    def agregar_tarea(self, tarea: Tarea) -> None:
         """Añade una tarea al final de la secuencia del proceso."""
         self.tareas.append(tarea)
 
