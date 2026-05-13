@@ -1,3 +1,6 @@
+import proceso as proceso_
+import tarea as tarea_
+
 class Producto:
     """
     Representa un producto que avanza por la línea de producción.

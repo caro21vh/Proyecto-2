@@ -1,3 +1,5 @@
+from producto import Producto
+
 class Tarea:
     """
     Representa una tarea o máquina dentro de un proceso.
