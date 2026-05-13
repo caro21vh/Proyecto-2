@@ -1,5 +1,4 @@
-import proceso as proceso_
-import tarea as tarea_
+
 
 class Producto:
     """
