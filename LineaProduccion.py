@@ -9,8 +9,8 @@ class LineaProduccion:
     """
 
     def __init__(self):
-        self.procesos: list[Proceso] = []
-        self.tiempo_actual: int = 0
+        self.__procesos: list[Proceso] = []
+        self.__tiempo_actual: int = 0
 
     # ------------------------------------------------------------------
     # Construcción de la línea
@@ -21,22 +21,22 @@ class LineaProduccion:
         Añade un proceso al final de la línea y vincula automáticamente
         el proceso anterior.
         """
-        if self.procesos:
-            proceso.vincular_anterior(self.procesos[-1])
-        self.procesos.append(proceso)
+        if self.__procesos:
+            proceso.vincular_anterior(self.__procesos[-1])
+        self.__procesos.append(proceso)
         
 
     def _proceso_inicial(self) -> "Proceso | None":
-        for p in self.procesos:
+        for p in self.__procesos:
             if p.es_inicial:
                 return p
-        return self.procesos[0] if self.procesos else None
+        return self.__procesos[0] if self.__procesos else None
 
     def _proceso_final(self) -> "Proceso | None":
-        for p in self.procesos:
+        for p in self.__procesos:
             if p.es_final:
                 return p
-        return self.procesos[-1] if self.procesos else None
+        return self.__procesos[-1] if self.__procesos else None
 
     # ------------------------------------------------------------------
     # Métodos del diagrama UML
@@ -48,10 +48,10 @@ class LineaProduccion:
         if inicio is None:
             raise ValueError("La línea no tiene procesos configurados.")
 
-        self.tiempo_actual = 0
+        self.__tiempo_actual = 0
 
         for producto in productos:
-            producto.registrar_ingreso(self.tiempo_actual)
+            producto.registrar_ingreso(self.__tiempo_actual)
             inicio.recibir_producto(producto)
 
         print(f"▶  Simulación iniciada con {len(productos)} producto(s).")
@@ -67,21 +67,21 @@ class LineaProduccion:
         al siguiente proceso (si lo hay).
         Retorna los productos que completaron la línea entera.
         """
-        self.tiempo_actual += 1
+        self.__tiempo_actual += 1
         productos_completados = []
 
-        for i, proceso in enumerate(self.procesos):
+        for i, proceso in enumerate(self.__procesos):
             terminados_en_proceso = proceso.avanzar_ciclo()
 
             for producto in terminados_en_proceso:
-                es_ultimo_proceso = (i == len(self.procesos) - 1)
+                es_ultimo_proceso = (i == len(self.__procesos) - 1)
 
                 if es_ultimo_proceso:
-                    producto.registrar_salida(self.tiempo_actual)
+                    producto.registrar_salida(self.__tiempo_actual)
                     producto.cambiar_estado("completado")
                     productos_completados.append(producto)
                 else:
-                    siguiente_proceso = self.procesos[i + 1]
+                    siguiente_proceso = self.__procesos[i + 1]
                     producto.proceso_actual = siguiente_proceso
                     siguiente_proceso.recibir_producto(producto)
 
@@ -100,19 +100,19 @@ class LineaProduccion:
         separador = "=" * 60
         lineas = [
             separador,
-            f"  LÍNEA DE PRODUCCIÓN  |  Ciclo: {self.tiempo_actual}",
+            f"  LÍNEA DE PRODUCCIÓN  |  Ciclo: {self.__tiempo_actual}",
             separador,
         ]
-        for proceso in self.procesos:
+        for proceso in self.__procesos:
             lineas.append(proceso.obtener_estado())
             lineas.append("-" * 40)
         return "\n".join(lineas)
 
     def hay_trabajo_pendiente(self) -> bool:
-        return any(p.hay_trabajo_pendiente() for p in self.procesos)
+        return any(p.hay_trabajo_pendiente() for p in self.__procesos)
 
     def __repr__(self) -> str:
         return (
-            f"LineaProduccion(procesos={len(self.procesos)}, "
-            f"ciclo={self.tiempo_actual})"
+            f"LineaProduccion(procesos={len(self.__procesos)}, "
+            f"ciclo={self.__tiempo_actual})"
         )

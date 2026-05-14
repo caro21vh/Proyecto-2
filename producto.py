@@ -6,36 +6,60 @@ class Producto:
     """
 
     def __init__(self, id):
-        self.id = id
-        self.estado = "Pendiente"
+        self.__id = id
+        self.__estado = "Pendiente"
 
-        self.tiempo_ingreso = None
-        self.tiempo_salida = None
+        self.__tiempo_ingreso = None
+        self.__tiempo_salida = None
 
-        self.proceso_actual = None
-        self.tarea_actual = None
+        self.__proceso_actual = None
+        self.__tarea_actual = None
+
+    @property
+    def id(self):
+        return self.__id
+
+    @property
+    def estado(self):
+        return self.__estado
+
+    @property
+    def proceso_actual(self):
+        return self.__proceso_actual
+
+    @proceso_actual.setter
+    def proceso_actual(self, proceso):
+        self.__proceso_actual = proceso
+
+    @property
+    def tarea_actual(self):
+        return self.__tarea_actual
+
+    @tarea_actual.setter
+    def tarea_actual(self, tarea):
+        self.__tarea_actual = tarea
 
     def registrar_ingreso(self, tiempo):
-        self.tiempo_ingreso = tiempo
-        self.estado = "Ingresado"
+        self.__tiempo_ingreso = tiempo
+        self.__estado = "Ingresado"
 
     def registrar_salida(self, tiempo):
-        self.tiempo_salida = tiempo
-        self.estado = "Finalizado"
+        self.__tiempo_salida = tiempo
+        self.__estado = "Finalizado"
 
     def cambiar_estado(self, estado):
-        self.estado = estado
+        self.__estado = estado
 
     def obtener_tiempo_total(self):
-        if self.tiempo_ingreso is None or self.tiempo_salida is None:
+        if self.__tiempo_ingreso is None or self.__tiempo_salida is None:
             return None
-        return self.tiempo_salida - self.tiempo_ingreso
+        return self.__tiempo_salida - self.__tiempo_ingreso
 
     def __repr__(self):
-        proceso = self.proceso_actual.nombre if self.proceso_actual else "Ninguno"
-        tarea = self.tarea_actual.nombre if self.tarea_actual else "Ninguna"
+        proceso = self.__proceso_actual.nombre if self.__proceso_actual else "Ninguno"
+        tarea = self.__tarea_actual.nombre if self.__tarea_actual else "Ninguna"
 
         return (
-            f"Producto(id={self.id}, estado='{self.estado}', "
+            f"Producto(id={self.__id}, estado='{self.__estado}', "
             f"proceso_actual='{proceso}', tarea_actual='{tarea}')"
         )

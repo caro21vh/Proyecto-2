@@ -9,12 +9,21 @@ class Proceso:
     """
 
     def __init__(self, id: int, nombre: str, es_inicial: bool = False, es_final: bool = False):
-        self.id = id
-        self.nombre = nombre
-        self.tareas: list[Tarea] = []
-        self.proceso_anterior: "Proceso | None" = None
-        self.es_inicial = es_inicial
-        self.es_final = es_final
+        self.__id = id
+        self.__nombre = nombre
+        self.__tareas: list[Tarea] = []
+        self.__proceso_anterior: "Proceso | None" = None
+        self.__es_inicial = es_inicial
+        self.__es_final = es_final
+
+    @property
+    def nombre(self): return self.__nombre
+
+    @property
+    def es_inicial(self): return self.__es_inicial
+
+    @property
+    def es_final(self): return self.__es_final
 
     # ------------------------------------------------------------------
     # Métodos del diagrama UML
@@ -22,27 +31,27 @@ class Proceso:
 
     def agregar_tarea(self, tarea: Tarea) -> None:
         """Añade una tarea al final de la secuencia del proceso."""
-        self.tareas.append(tarea)
+        self.__tareas.append(tarea)
 
     def obtener_estado(self) -> str:
         """Descripción completa del proceso y todas sus tareas."""
         tipo = ""
-        if self.es_inicial:
+        if self.__es_inicial:
             tipo = " [INICIAL]"
-        elif self.es_final:
+        elif self.__es_final:
             tipo = " [FINAL]"
 
-        lineas = [f"Proceso [{self.id}] {self.nombre}{tipo}"]
-        if not self.tareas:
+        lineas = [f"Proceso [{self.__id}] {self.__nombre}{tipo}"]
+        if not self.__tareas:
             lineas.append("  (sin tareas)")
         else:
-            for tarea in self.tareas:
+            for tarea in self.__tareas:
                 lineas.append(tarea.obtener_estado())
         return "\n".join(lineas)
 
     def vincular_anterior(self, proceso: "Proceso") -> None:
         """Vincula este proceso con el que le precede en la línea."""
-        self.proceso_anterior = proceso
+        self.__proceso_anterior = proceso
 
     # ------------------------------------------------------------------
     # Lógica de simulación
@@ -50,10 +59,10 @@ class Proceso:
 
     def recibir_producto(self, producto) -> None:
         """Entrega el producto a la primera tarea del proceso."""
-        if not self.tareas:
-            raise ValueError(f"El proceso '{self.nombre}' no tiene tareas configuradas.")
+        if not self.__tareas:
+            raise ValueError(f"El proceso '{self.__nombre}' no tiene tareas configuradas.")
         producto.proceso_actual = self
-        self.tareas[0].ejecutar(producto)
+        self.__tareas[0].ejecutar(producto)
 
     def avanzar_ciclo(self) -> list:
         """
@@ -62,32 +71,32 @@ class Proceso:
         """
         productos_terminados = []
 
-        for i, tarea in enumerate(self.tareas):
+        for i, tarea in enumerate(self.__tareas):
             producto_listo = tarea.avanzar_ciclo()
 
             if producto_listo is not None:
-                es_ultima_tarea = (i == len(self.tareas) - 1)
+                es_ultima_tarea = (i == len(self.__tareas) - 1)
                 if es_ultima_tarea:
                     producto_listo.tarea_actual = None
                     productos_terminados.append(producto_listo)
                 else:
-                    producto_listo.tarea_actual = self.tareas[i + 1]
-                    self.tareas[i + 1].ejecutar(producto_listo)
+                    producto_listo.tarea_actual = self.__tareas[i + 1]
+                    self.__tareas[i + 1].ejecutar(producto_listo)
 
         return productos_terminados
 
     def hay_trabajo_pendiente(self) -> bool:
         """True si alguna tarea está ocupada o tiene productos en cola."""
-        return any(t.ocupada or len(t.cola_productos) > 0 for t in self.tareas)
+        return any(t.ocupada or len(t.cola_productos) > 0 for t in self.__tareas)
 
     def conteo_productos_en_espera(self) -> int:
         """Total de productos esperando en las colas de este proceso."""
-        return sum(len(t.cola_productos) for t in self.tareas)
+        return sum(len(t.cola_productos) for t in self.__tareas)
 
     # ------------------------------------------------------------------
 
     def __repr__(self) -> str:
         return (
-            f"Proceso(id={self.id}, nombre='{self.nombre}', "
-            f"tareas={len(self.tareas)}, inicial={self.es_inicial}, final={self.es_final})"
+            f"Proceso(id={self.__id}, nombre='{self.__nombre}', "
+            f"tareas={len(self.__tareas)}, inicial={self.__es_inicial}, final={self.__es_final})"
         )
