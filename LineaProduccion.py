@@ -1,4 +1,4 @@
-from proceso import Proceso, Tarea
+from Proceso import Proceso, Tarea
 
 
 class LineaProduccion:
@@ -24,6 +24,7 @@ class LineaProduccion:
         if self.procesos:
             proceso.vincular_anterior(self.procesos[-1])
         self.procesos.append(proceso)
+        
 
     def _proceso_inicial(self) -> "Proceso | None":
         for p in self.procesos:
@@ -88,7 +89,7 @@ class LineaProduccion:
 
     def generar_reporte(self):
         """Retorna un objeto Reporte con las estadísticas de la simulación."""
-        from reporte import Reporte
+        from Reporte import Reporte
         return Reporte(self)
 
     # ------------------------------------------------------------------

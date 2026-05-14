@@ -1,4 +1,4 @@
-from tarea import Tarea
+from Tarea import Tarea
 
 
 class Proceso:
