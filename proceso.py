@@ -23,7 +23,10 @@ class Proceso:
     def es_inicial(self): return self.__es_inicial
 
     @property
-    def es_final(self): return self.__es_final
+    def tareas(self): return self.__tareas
+
+    @property
+    def id(self): return self.__id
 
     # ------------------------------------------------------------------
     # Métodos del diagrama UML

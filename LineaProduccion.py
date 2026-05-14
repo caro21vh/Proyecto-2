@@ -12,6 +12,14 @@ class LineaProduccion:
         self.__procesos: list[Proceso] = []
         self.__tiempo_actual: int = 0
 
+    @property
+    def procesos(self):
+        return self.__procesos
+
+    @property
+    def tiempo_actual(self):
+        return self.__tiempo_actual
+
     # ------------------------------------------------------------------
     # Construcción de la línea
     # ------------------------------------------------------------------

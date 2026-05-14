@@ -13,6 +13,14 @@ class Simulador:
         self.__procesos_originales = []
         self.__productos_originales = []
 
+    @property
+    def linea(self):
+        return self.__linea
+
+    @property
+    def productos(self):
+        return self.__productos
+
     def configurar(self, procesos: list, productos: list) -> None:
         self.__procesos_originales = copy.deepcopy(procesos)
         self.__productos_originales = copy.deepcopy(productos)

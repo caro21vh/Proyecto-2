@@ -24,6 +24,14 @@ class Producto:
         return self.__estado
 
     @property
+    def tiempo_ingreso(self):
+        return self.__tiempo_ingreso
+
+    @property
+    def tiempo_salida(self):
+        return self.__tiempo_salida
+
+    @property
     def proceso_actual(self):
         return self.__proceso_actual
 

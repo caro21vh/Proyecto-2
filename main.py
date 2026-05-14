@@ -80,7 +80,8 @@ def main():
         print("1. Configurar")
         print("2. Ejecutar")
         print("3. Reiniciar")
-        print("4. Salir")
+        print("4. Generar Reporte")
+        print("5. Salir")
         print("===============================")
         
         opcion = input("Elige una opción: ").strip()
@@ -92,6 +93,14 @@ def main():
         elif opcion == "3":
             simulador.reiniciar()
         elif opcion == "4":
+            if simulador.linea is None:
+                print("❌ Debes configurar y ejecutar la simulación primero.")
+            else:
+                from Reporte import Reporte
+                reporte = Reporte()
+                reporte.generar(simulador.linea, simulador.productos)
+                reporte.imprimir()
+        elif opcion == "5":
             print("Saliendo del simulador...")
             break
         else:
