@@ -57,11 +57,11 @@ for i in range(1, 200):
 # FUENTES
 # =========================================
 try:
-    TITLE_FONT  = pygame.font.SysFont("Segoe UI", 32, bold=True)
-    HEAD_FONT   = pygame.font.SysFont("Segoe UI", 22, bold=True)
-    TEXT_FONT   = pygame.font.SysFont("Segoe UI", 19)
-    SMALL_FONT  = pygame.font.SysFont("Segoe UI", 16)
-    TINY_FONT   = pygame.font.SysFont("Segoe UI", 13)
+    TITLE_FONT  = pygame.font.SysFont("Montserrat", 32, bold=True)
+    HEAD_FONT   = pygame.font.SysFont("Montserrat", 22, bold=True)
+    TEXT_FONT   = pygame.font.SysFont("Montserrat", 19)
+    SMALL_FONT  = pygame.font.SysFont("Montserrat", 16)
+    TINY_FONT   = pygame.font.SysFont("Montserrat", 13)
 except:
     TITLE_FONT = HEAD_FONT = TEXT_FONT = SMALL_FONT = TINY_FONT = pygame.font.SysFont(None, 20)
 
@@ -72,11 +72,6 @@ def draw_rounded_rect(surface, color, rect, radius=12, border=0, border_color=No
     pygame.draw.rect(surface, color, rect, border_radius=radius)
     if border and border_color:
         pygame.draw.rect(surface, border_color, rect, width=border, border_radius=radius)
-
-def draw_shadow(surface, rect, radius=12, alpha=30):
-    shadow = pygame.Surface((rect.width + 6, rect.height + 6), pygame.SRCALPHA)
-    pygame.draw.rect(shadow, (0, 0, 0, alpha), shadow.get_rect(), border_radius=radius + 2)
-    surface.blit(shadow, (rect.x + 3, rect.y + 4))
 
 def render_text_centered(surface, font, text, color, rect):
     surf = font.render(text, True, color)
