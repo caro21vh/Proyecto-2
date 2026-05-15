@@ -7,9 +7,8 @@ from Tarea import Tarea
 
 pygame.init()
 
-# =========================================
 # CONFIGURACION GENERAL
-# =========================================
+
 WIDTH = 1400
 HEIGHT = 820
 
@@ -17,9 +16,8 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("LinProd - Simulador de Producción")
 clock = pygame.time.Clock()
 
-# =========================================
 # COLORES
-# =========================================
+
 BG         = (235, 238, 245)
 WHITE      = (255, 255, 255)
 BLACK      = (30,  30,  40)
@@ -53,9 +51,8 @@ for i in range(1, 200):
         (i * 127 + 50) % 180 + 60,
     )
 
-# =========================================
 # FUENTES
-# =========================================
+
 try:
     TITLE_FONT  = pygame.font.SysFont("Montserrat", 32, bold=True)
     HEAD_FONT   = pygame.font.SysFont("Montserrat", 22, bold=True)
@@ -65,9 +62,19 @@ try:
 except:
     TITLE_FONT = HEAD_FONT = TEXT_FONT = SMALL_FONT = TINY_FONT = pygame.font.SysFont(None, 20)
 
-# =========================================
-# HELPERS DE DIBUJO
-# =========================================
+
+# Efectos elementos visuales
+
+def draw_shadow(surface, rect, radius=12, blur=20):
+    """Dibuja una sombra suave debajo de un rect."""
+    shadow_surf = pygame.Surface((rect.width + blur * 2, rect.height + blur * 2), pygame.SRCALPHA)
+    for i in range(blur, 0, -1):
+        alpha = int(60 * (1 - i / blur) ** 2)
+        col = (0, 0, 0, alpha)
+        r = pygame.Rect(blur - i, blur - i, rect.width + i * 2, rect.height + i * 2)
+        pygame.draw.rect(shadow_surf, col, r, border_radius=radius + i)
+    surface.blit(shadow_surf, (rect.x - blur, rect.y - blur))
+
 def draw_rounded_rect(surface, color, rect, radius=12, border=0, border_color=None):
     pygame.draw.rect(surface, color, rect, border_radius=radius)
     if border and border_color:
@@ -85,9 +92,9 @@ def clip_text(font, text, max_width):
         text = text[:-1]
     return text + "…"
 
-# =========================================
+
 # CLASE BOTON
-# =========================================
+
 class Button:
     def __init__(self, x, y, width, height, text, color=None, text_color=WHITE,
                  radius=10, font=None, icon=None):
@@ -124,9 +131,9 @@ class Button:
                 event.button == 1 and
                 self.rect.collidepoint(event.pos))
 
-# =========================================
-# INPUT FIELD
-# =========================================
+
+# INPUTS
+
 class InputField:
     def __init__(self, x, y, width, height, value="", max_len=25, font=None):
         self.rect    = pygame.Rect(x, y, width, height)
@@ -159,9 +166,9 @@ class InputField:
                     self.value += event.unicode
         return self.active
 
-# =========================================
-# ESTADO GLOBAL
-# =========================================
+
+# ESTADOS GLOBAL
+
 cantidad_productos = 1
 procesos_config    = []   # list of dicts
 nombre_inputs      = []   # InputField per process
@@ -179,9 +186,12 @@ error_timer        = 0
 
 TIME_EVENT = pygame.USEREVENT + 1
 
-# =========================================
+# Mostrar estación por estación
+pasos_pendientes = []   
+
+
 # LÓGICA DE CONFIGURACIÓN
-# =========================================
+
 def agregar_proceso():
     idx = len(procesos_config)
     nuevo = {
@@ -272,10 +282,14 @@ def construir_simulador():
     simulation_running = True
     simulacion_pausada = False
     simulation_done    = False
+    # Capturar snapshot inicial para mostrarlo de inmediato
+    pasos_pendientes.clear()
+    snap0 = capturar_snapshot(simulador._Simulador__linea, simulador._Simulador__productos)
+    pasos_pendientes.append(snap0)
 
-# =========================================
-# HEADER GENÉRICO
-# =========================================
+
+# HEADER 
+
 def draw_header(title, subtitle=""):
     pygame.draw.rect(screen, BLUE_DARK, (0, 0, WIDTH, 65))
     surf = TITLE_FONT.render("LinProd", True, WHITE)
@@ -286,9 +300,9 @@ def draw_header(title, subtitle=""):
         s = SMALL_FONT.render(subtitle, True, (160, 180, 230))
         screen.blit(s, (30 + surf.get_width() + sep.get_width() + 10, 26))
 
-# =========================================
+
 # PANTALLA: MENÚ PRINCIPAL
-# =========================================
+
 def draw_menu():
     screen.fill(BG)
     # Gradient-ish top band
@@ -311,10 +325,8 @@ def draw_menu():
 
     return btn
 
-
-# =========================================
 # PANTALLA: CONFIGURACIÓN
-# =========================================
+
 def draw_configuration():
     global scroll_y, cantidad_productos, error_timer, error_msg
 
@@ -498,141 +510,211 @@ def draw_configuration():
 
 
 # =========================================
-# PANTALLA: SIMULACIÓN
+# SNAPSHOT: captura estado visual actual
 # =========================================
+def capturar_snapshot(linea, productos_todos):
+    """
+    Captura el estado actual de cada tarea: qué producto está en el slot
+    y qué productos están en cola. Se guarda como estructura de datos pura
+    (sin referencias a objetos que pueden mutar) para poder dibujarlo
+    aunque el modelo ya avanzó.
+    """
+    snap = {
+        "ciclo": linea.tiempo_actual,
+        "procesos": []
+    }
+    for proceso in linea.procesos:
+        proc_snap = {"nombre": proceso.nombre, "es_inicial": proceso.es_inicial,
+                     "es_final": proceso.es_final, "tareas": []}
+        for tarea in proceso.tareas:
+            prod_id   = tarea.producto_actual.id if tarea.producto_actual else None
+            cola_ids  = [p.id for p in tarea.cola_productos]
+            proc_snap["tareas"].append({
+                "nombre":     tarea.nombre,
+                "tiempo":     tarea.tiempo_procesamiento,
+                "restante":   tarea.tiempo_restante,
+                "ocupada":    tarea.ocupada,
+                "prod_id":    prod_id,
+                "cola_ids":   cola_ids,
+            })
+        snap["procesos"].append(proc_snap)
+    snap["completados"] = [p.id for p in productos_todos if p.estado == "completado"]
+    snap["total"]       = len(productos_todos)
+    return snap
+
+
+# PANTALLA: SIMULACIÓN
+# Columnas = Procesos  |  Dentro = Tareas apiladas
+# Dibuja desde un snapshot (estado inmutable)
+
+def draw_simulation_snap(snap):
+    """Dibuja la pantalla de simulación a partir de un snapshot."""
+    procesos_snap = snap["procesos"]
+    n_proc        = len(procesos_snap)
+    max_tasks     = max((len(p["tareas"]) for p in procesos_snap), default=1)
+
+    MARGIN  = 20
+    ARROW_W = 30
+    PROC_W  = max(180, (WIDTH - MARGIN * 2 - ARROW_W * (n_proc - 1)) // max(n_proc, 1))
+    TASK_H  = max(110, (HEIGHT - 165) // max(max_tasks, 1) - 10)
+    COL_TOP = 80
+
+    for proc_idx, proc_snap in enumerate(procesos_snap):
+        accent = PROCESS_COLORS[proc_idx % len(PROCESS_COLORS)]
+        px = MARGIN + proc_idx * (PROC_W + ARROW_W)
+
+        # ── Cabecera proceso ─────────────────────────────────────────
+        header_rect = pygame.Rect(px, COL_TOP, PROC_W, 38)
+        draw_rounded_rect(screen, accent, header_rect, 10)
+        type_tag = " [I]" if proc_snap["es_inicial"] else (" [F]" if proc_snap["es_final"] else "")
+        h_text = clip_text(SMALL_FONT, proc_snap["nombre"] + type_tag, PROC_W - 16)
+        render_text_centered(screen, SMALL_FONT, h_text, WHITE, header_rect)
+
+        # ── Tarjetas de tarea ────────────────────────────────────────
+        for t_idx, tsnap in enumerate(proc_snap["tareas"]):
+            ty   = COL_TOP + 48 + t_idx * (TASK_H + 8)
+            card = pygame.Rect(px, ty, PROC_W, TASK_H)
+
+            ocupada  = tsnap["ocupada"]
+            card_bg  = (255, 247, 247) if ocupada else WHITE
+            bord_col = accent if ocupada else LIGHT
+            draw_shadow(screen, card, 10, 14)
+            draw_rounded_rect(screen, card_bg, card, 10, 2, bord_col)
+
+            # Nombre + ciclos
+            screen.blit(HEAD_FONT.render(clip_text(HEAD_FONT, tsnap["nombre"], PROC_W - 20),
+                                         True, BLACK), (px + 10, ty + 8))
+            screen.blit(TINY_FONT.render(f"Ciclos: {tsnap['tiempo']}", True, GRAY),
+                        (px + 10, ty + 30))
+
+            # ── Slot de PROCESANDO ────────────────────────────────────
+            slot_size = 44
+            slot_x    = px + PROC_W - slot_size - 10
+            slot_y    = ty + 10
+            slot_rect = pygame.Rect(slot_x, slot_y, slot_size, slot_size)
+            slot_bg   = (220, 230, 255) if ocupada else (230, 235, 245)
+            draw_rounded_rect(screen, slot_bg, slot_rect, 8, 2,
+                              accent if ocupada else (190, 200, 215))
+
+            if tsnap["prod_id"] is not None:
+                pcol = PRODUCT_COLORS.get((tsnap["prod_id"] - 1) % 199 + 1, BLUE)
+                pygame.draw.circle(screen, pcol, slot_rect.center, 18)
+                pid_s = SMALL_FONT.render(str(tsnap["prod_id"]), True, WHITE)
+                screen.blit(pid_s, pid_s.get_rect(center=slot_rect.center))
+            else:
+                es = TINY_FONT.render("libre", True, (190, 200, 215))
+                screen.blit(es, es.get_rect(center=slot_rect.center))
+
+            # ── Barra de progreso ─────────────────────────────────────
+            bar_y  = slot_y + slot_size + 4
+            bar_bg = pygame.Rect(slot_x, bar_y, slot_size, 6)
+            draw_rounded_rect(screen, (210, 215, 225), bar_bg, 3)
+            if ocupada and tsnap["tiempo"] > 0:
+                pct = 1.0 - tsnap["restante"] / tsnap["tiempo"]
+                fw  = max(4, int(slot_size * pct))
+                draw_rounded_rect(screen, accent,
+                                  pygame.Rect(slot_x, bar_y, fw, 6), 3)
+
+            # ── Cola de espera ────────────────────────────────────────
+            cola_ids     = tsnap["cola_ids"]
+            cola_label_y = ty + 48
+            screen.blit(TINY_FONT.render("Cola:", True, GRAY), (px + 10, cola_label_y))
+
+            avail_w  = slot_x - px - 16
+            r_c      = 11
+            gap      = 4
+            max_show = max(1, avail_w // (r_c * 2 + gap))
+            for ci, cid in enumerate(cola_ids[:max_show]):
+                pcol = PRODUCT_COLORS.get((cid - 1) % 199 + 1, BLUE)
+                cx_c = px + 10 + ci * (r_c * 2 + gap) + r_c
+                cy_c = cola_label_y + 18
+                pygame.draw.circle(screen, pcol, (cx_c, cy_c), r_c)
+                ns = TINY_FONT.render(str(cid), True, WHITE)
+                screen.blit(ns, ns.get_rect(center=(cx_c, cy_c)))
+            if len(cola_ids) > max_show:
+                ex_x = px + 10 + max_show * (r_c * 2 + gap)
+                screen.blit(TINY_FONT.render(f"+{len(cola_ids) - max_show}", True, GRAY),
+                            (ex_x, cola_label_y + 10))
+
+            # Ciclos restantes (si está ocupada)
+            if ocupada:
+                rs = TINY_FONT.render(f"Restante: {tsnap['restante']}", True, ORANGE)
+                screen.blit(rs, (px + 10, ty + TASK_H - 18))
+
+        # ── Flecha → siguiente proceso ────────────────────────────────
+        if proc_idx < n_proc - 1:
+            ax = px + PROC_W + 4
+            ay = COL_TOP + 38 + max_tasks * (TASK_H + 8) // 2
+            pygame.draw.line(screen, BLUE, (ax, ay), (ax + ARROW_W - 8, ay), 2)
+            pygame.draw.polygon(screen, BLUE, [
+                (ax + ARROW_W - 8, ay - 6),
+                (ax + ARROW_W - 8, ay + 6),
+                (ax + ARROW_W,     ay),
+            ])
+
+    # ── Barra inferior: completados ───────────────────────────────────
+    completados = snap["completados"]
+    total       = snap["total"]
+    done_s = SMALL_FONT.render(f"Completados: {len(completados)} / {total}", True,
+                                GREEN if completados else GRAY)
+    screen.blit(done_s, (MARGIN, HEIGHT - 54))
+    for ci, cid in enumerate(completados[:20]):
+        pcol = PRODUCT_COLORS.get((cid - 1) % 199 + 1, BLUE)
+        bx = MARGIN + done_s.get_width() + 14 + ci * 26
+        if bx + 22 < WIDTH - 580:
+            pygame.draw.circle(screen, pcol, (bx + 10, HEIGHT - 40), 11)
+            ns = TINY_FONT.render(str(cid), True, WHITE)
+            screen.blit(ns, ns.get_rect(center=(bx + 10, HEIGHT - 40)))
+
+
 def draw_simulation():
+    """Wrapper: dibuja header + controles + llama draw_simulation_snap."""
     global simulation_done
 
     screen.fill(BG)
-
     linea = simulador._Simulador__linea if simulador else None
 
-    # Check if done
-    if linea and not linea.hay_trabajo_pendiente() and not simulation_done:
+    if linea and not linea.hay_trabajo_pendiente() and not simulation_done and not pasos_pendientes:
         simulation_done = True
 
-    # Header
+    # ── Header ────────────────────────────────────────────────────────
     status_color = ORANGE if simulacion_pausada else (GREEN if simulation_done else BLUE)
     status_text  = "PAUSADA" if simulacion_pausada else ("COMPLETADA ✓" if simulation_done else "EN EJECUCIÓN")
-    pygame.draw.rect(screen, BLUE_DARK, (0, 0, WIDTH, 65))
-    screen.blit(TITLE_FONT.render("LinProd", True, WHITE), (30, 16))
-    screen.blit(HEAD_FONT.render("  |  Simulación", True, (180, 200, 255)), (130, 20))
 
-    # Ciclo badge
-    ciclo = linea.tiempo_actual if linea else 0
-    cb = pygame.Rect(WIDTH - 310, 10, 155, 44)
-    draw_rounded_rect(screen, BLUE, cb, 10)
-    screen.blit(HEAD_FONT.render(f"Ciclo: {ciclo}", True, WHITE), cb.inflate(-16, -10).topleft)
+    pygame.draw.rect(screen, WHITE, (0, 0, WIDTH, 70))
+    pygame.draw.line(screen, LIGHT, (0, 70), (WIDTH, 70), 2)
+    screen.blit(TITLE_FONT.render("Simulacion de Produccion", True, BLACK), (30, 18))
 
-    # Status badge
-    sb = pygame.Rect(WIDTH - 150, 10, 140, 44)
+    ciclo = pasos_pendientes[0]["ciclo"] if pasos_pendientes else (linea.tiempo_actual if linea else 0)
+    ciclo_s = HEAD_FONT.render(f"Ciclo {ciclo}", True, BLUE)
+    screen.blit(ciclo_s, (WIDTH - ciclo_s.get_width() - 20, 22))
+    sb = pygame.Rect(WIDTH - ciclo_s.get_width() - 160, 15, 130, 38)
     draw_rounded_rect(screen, status_color, sb, 10)
     render_text_centered(screen, SMALL_FONT, status_text, WHITE, sb)
 
     if linea is None:
         screen.blit(TEXT_FONT.render("Simulador no inicializado.", True, RED), (100, 200))
+    elif pasos_pendientes:
+        draw_simulation_snap(pasos_pendientes[0])
     else:
-        # Calcular layout
-        n_proc = len(linea.procesos)
-        PROC_W = max(200, min(320, (WIDTH - 80) // max(n_proc, 1) - 10))
-        x_start = 40
-        y_proc  = 80
+        # Sin pasos pendientes: capturar estado actual
+        snap = capturar_snapshot(linea, simulador._Simulador__productos)
+        draw_simulation_snap(snap)
 
-        for proc_idx, proceso in enumerate(linea.procesos):
-            px = x_start + proc_idx * (PROC_W + 10)
-            n_tasks = len(proceso.tareas)
-            ph = 60 + n_tasks * 130
-            proc_rect = pygame.Rect(px, y_proc, PROC_W, ph)
-
-            accent = PROCESS_COLORS[proc_idx % len(PROCESS_COLORS)]
-            draw_shadow(screen, proc_rect, 14, 30)
-            draw_rounded_rect(screen, WHITE, proc_rect, 14)
-            # Top accent
-            top_r = pygame.Rect(px, y_proc, PROC_W, 38)
-            draw_rounded_rect(screen, accent, top_r, 14)
-            pygame.draw.rect(screen, accent, pygame.Rect(px, y_proc + 14, PROC_W, 24))
-
-            # Process title
-            type_tag = ""
-            if proceso.es_inicial: type_tag = " [INICIAL]"
-            elif proceso.es_final:  type_tag = " [FINAL]"
-            title_s = SMALL_FONT.render(clip_text(SMALL_FONT, proceso.nombre + type_tag, PROC_W - 20), True, WHITE)
-            screen.blit(title_s, (px + 10, y_proc + 10))
-
-            # Tasks
-            ty = y_proc + 46
-            for tarea in proceso.tareas:
-                trect = pygame.Rect(px + 8, ty, PROC_W - 16, 118)
-                t_color = (255, 240, 240) if tarea.ocupada else (240, 255, 245)
-                draw_rounded_rect(screen, t_color, trect, 10, 1, (220, 210, 210) if tarea.ocupada else LIGHT)
-
-                # Task name
-                screen.blit(SMALL_FONT.render(clip_text(SMALL_FONT, tarea.nombre, PROC_W - 30), True, BLACK), (px + 14, ty + 6))
-                # Processing time
-                screen.blit(TINY_FONT.render(f"Tiempo proc.: {tarea.tiempo_procesamiento}", True, GRAY), (px + 14, ty + 26))
-
-                # Occupied / free
-                estado_c = RED if tarea.ocupada else GREEN
-                estado_s = "● Ocupada" if tarea.ocupada else "○ Libre"
-                screen.blit(TINY_FONT.render(estado_s, True, estado_c), (px + 14, ty + 44))
-
-                # Tiempo restante
-                if tarea.ocupada and tarea.tiempo_restante:
-                    screen.blit(TINY_FONT.render(f"Restante: {tarea.tiempo_restante}", True, ORANGE), (px + 14, ty + 60))
-
-                # Producto actual (círculo)
-                if tarea.producto_actual:
-                    prod = tarea.producto_actual
-                    pcol = PRODUCT_COLORS.get((prod.id - 1) % 199 + 1, BLUE)
-                    pygame.draw.circle(screen, pcol, (px + PROC_W - 28, ty + 28), 18)
-                    pid_s = SMALL_FONT.render(str(prod.id), True, WHITE)
-                    screen.blit(pid_s, pid_s.get_rect(center=(px + PROC_W - 28, ty + 28)))
-
-                # Cola de espera
-                cola = tarea.cola_productos
-                screen.blit(TINY_FONT.render(f"Cola ({len(cola)}):", True, GRAY), (px + 14, ty + 78))
-                for ci, cp in enumerate(cola[:6]):
-                    pcol = PRODUCT_COLORS.get((cp.id - 1) % 199 + 1, BLUE)
-                    cx_c = px + 14 + ci * 18
-                    if cx_c + 16 < px + PROC_W:
-                        pygame.draw.circle(screen, pcol, (cx_c + 8, ty + 100), 8)
-                        screen.blit(TINY_FONT.render(str(cp.id), True, WHITE),
-                                    TINY_FONT.render(str(cp.id), True, WHITE).get_rect(center=(cx_c + 8, ty + 100)))
-                if len(cola) > 6:
-                    screen.blit(TINY_FONT.render(f"+{len(cola)-6}", True, GRAY), (px + 14 + 6 * 18, ty + 93))
-
-                ty += 128
-
-            # Arrow to next process
-            if proc_idx < n_proc - 1:
-                ax = px + PROC_W + 5
-                ay = y_proc + 50
-                pygame.draw.polygon(screen, BLUE, [
-                    (ax - 1, ay - 8), (ax - 1, ay + 8), (ax + 9, ay)
-                ])
-
-    # Productos completados
-    completados = [p for p in (simulador._Simulador__productos if simulador else [])
-                   if p.estado == "completado"]
-    done_text = SMALL_FONT.render(f"Completados: {len(completados)}/{cantidad_productos}", True, GREEN)
-    screen.blit(done_text, (40, HEIGHT - 55))
-
-    # Botones de control
+    # ── Botones ───────────────────────────────────────────────────────
     pause_label = "⏸ Pausar" if not simulacion_pausada else "▶ Reanudar"
     pause_c     = ORANGE if not simulacion_pausada else GREEN
-    pause_btn   = Button(WIDTH - 360, HEIGHT - 55, 160, 44, pause_label, pause_c, radius=10, font=TEXT_FONT)
-    report_btn  = Button(WIDTH - 190, HEIGHT - 55, 175, 44, "📊 Ver Reporte",   PURPLE, radius=10, font=TEXT_FONT)
-    reconf_btn  = Button(WIDTH - 560, HEIGHT - 55, 185, 44, "⚙ Reconfigurar",  GRAY,   radius=10, font=TEXT_FONT)
+    pause_btn  = Button(WIDTH - 360, HEIGHT - 58, 160, 44, pause_label,    pause_c, radius=10, font=TEXT_FONT)
+    report_btn = Button(WIDTH - 190, HEIGHT - 58, 175, 44, "Ver Reporte",  PURPLE,  radius=10, font=TEXT_FONT)
+    reconf_btn = Button(WIDTH - 560, HEIGHT - 58, 185, 44, "Reconfigurar", GRAY,    radius=10, font=TEXT_FONT)
     pause_btn.draw(screen)
     report_btn.draw(screen)
     reconf_btn.draw(screen)
 
     return pause_btn, report_btn, reconf_btn
 
-
-# =========================================
 # PANTALLA: REPORTE
-# =========================================
+
 def draw_report():
     screen.fill(BG)
     draw_header("Reporte Final", "Estadísticas de la simulación completada")
@@ -732,12 +814,11 @@ def draw_report():
     return back_btn, reconf_btn, reinit_btn
 
 
-# =========================================
 # LOOP PRINCIPAL
-# =========================================
+
 def main():
     global scene, scroll_y, cantidad_productos
-    global simulacion_pausada, simulador, simulation_done
+    global simulacion_pausada, simulador, simulation_done, pasos_pendientes
 
     scene = "menu"
 
@@ -750,7 +831,6 @@ def main():
     pygame.time.set_timer(TIME_EVENT, 800)  # 800 ms por ciclo
 
     while running:
-        # ---- Variables de retorno de draw ----
         start_btn   = None
         add_proc    = None
         start_sim   = None
@@ -790,11 +870,19 @@ def main():
             if event.type == TIME_EVENT:
                 if (scene == "simulation" and not simulacion_pausada
                         and simulador and not simulation_done):
-                    linea = simulador._Simulador__linea
-                    if linea.hay_trabajo_pendiente():
-                        linea.avanzar_ciclo()
-                    else:
-                        simulation_done = True
+                    # Consumir el snapshot visible
+                    if pasos_pendientes:
+                        pasos_pendientes.pop(0)
+                    # Si ya no quedan pasos pendientes, avanzar el modelo
+                    if not pasos_pendientes:
+                        linea = simulador._Simulador__linea
+                        if linea.hay_trabajo_pendiente():
+                            linea.avanzar_ciclo()
+                            # Capturar nuevo snapshot post-ciclo
+                            snap = capturar_snapshot(linea, simulador._Simulador__productos)
+                            pasos_pendientes.append(snap)
+                        else:
+                            simulation_done = True
 
             # Scroll en config
             if scene == "config" and event.type == pygame.MOUSEWHEEL:

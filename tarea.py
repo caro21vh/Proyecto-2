@@ -31,6 +31,12 @@ class Tarea:
     @property
     def cola_productos(self): return self.__cola_productos
 
+    @property
+    def tiempo_restante(self): return self.__tiempo_restante
+
+    @property
+    def producto_actual(self): return self.__producto_actual
+
     def ejecutar(self, producto):
         """
         Recibe un producto.

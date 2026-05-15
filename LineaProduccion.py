@@ -71,27 +71,38 @@ class LineaProduccion:
     def avanzar_ciclo(self) -> list:
         """
         Avanza UN ciclo en toda la línea.
-        Los productos que salen de un proceso pasan automáticamente
-        al siguiente proceso (si lo hay).
+        Para evitar que un producto cruce varios procesos en un mismo
+        ciclo, primero se recolectan todos los productos que terminan
+        cada proceso y LUEGO se transfieren al siguiente proceso.
         Retorna los productos que completaron la línea entera.
         """
         self.__tiempo_actual += 1
         productos_completados = []
 
-        for i, proceso in enumerate(self.__procesos):
+        # 1. Avanzar todos los procesos de atrás hacia adelante para
+        #    evitar que una transferencia inmediata haga avanzar un
+        #    producto dos veces en el mismo ciclo.
+        transferencias = []   # (producto, índice_proceso_destino)
+
+        for i in range(len(self.__procesos) - 1, -1, -1):
+            proceso = self.__procesos[i]
             terminados_en_proceso = proceso.avanzar_ciclo()
 
             for producto in terminados_en_proceso:
                 es_ultimo_proceso = (i == len(self.__procesos) - 1)
-
                 if es_ultimo_proceso:
                     producto.registrar_salida(self.__tiempo_actual)
                     producto.cambiar_estado("completado")
                     productos_completados.append(producto)
                 else:
-                    siguiente_proceso = self.__procesos[i + 1]
-                    producto.proceso_actual = siguiente_proceso
-                    siguiente_proceso.recibir_producto(producto)
+                    transferencias.append((producto, i + 1))
+
+        # 2. Ahora sí: entregar los productos al siguiente proceso
+        #    (ya no se van a procesar en este ciclo porque el bucle terminó)
+        for producto, idx_destino in transferencias:
+            siguiente_proceso = self.__procesos[idx_destino]
+            producto.proceso_actual = siguiente_proceso
+            siguiente_proceso.recibir_producto(producto)
 
         return productos_completados
 

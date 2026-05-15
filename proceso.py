@@ -23,6 +23,9 @@ class Proceso:
     def es_inicial(self): return self.__es_inicial
 
     @property
+    def es_final(self): return self.__es_final
+
+    @property
     def tareas(self): return self.__tareas
 
     @property
@@ -70,11 +73,19 @@ class Proceso:
     def avanzar_ciclo(self) -> list:
         """
         Avanza un ciclo en todas las tareas del proceso.
-        Retorna los productos que terminaron la última tarea (salen del proceso).
+        Los productos que terminan una tarea intermedia se encolan en la
+        siguiente tarea, pero NO se procesan en este mismo ciclo (se
+        transferirán al inicio del siguiente ciclo mediante
+        _transferir_pendientes). Esto garantiza que cada producto se
+        vea en cada estación durante al menos un ciclo.
+        Retorna los productos que terminaron la ÚLTIMA tarea (salen del proceso).
         """
         productos_terminados = []
 
-        for i, tarea in enumerate(self.__tareas):
+        # Avanzar de la última tarea a la primera para evitar que un
+        # producto avance dos tareas en un mismo ciclo.
+        for i in range(len(self.__tareas) - 1, -1, -1):
+            tarea = self.__tareas[i]
             producto_listo = tarea.avanzar_ciclo()
 
             if producto_listo is not None:
@@ -83,6 +94,7 @@ class Proceso:
                     producto_listo.tarea_actual = None
                     productos_terminados.append(producto_listo)
                 else:
+                    # Encolar en la siguiente tarea sin procesarla este ciclo
                     producto_listo.tarea_actual = self.__tareas[i + 1]
                     self.__tareas[i + 1].ejecutar(producto_listo)
 
