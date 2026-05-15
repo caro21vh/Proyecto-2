@@ -7,17 +7,19 @@ from Tarea import Tarea
 
 pygame.init()
 
+# =========================================
 # CONFIGURACION GENERAL
-
-WIDTH = 1400
-HEIGHT = 820
+# =========================================
+WIDTH = 1200
+HEIGHT = 700
 
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("LinProd - Simulador de Producción")
 clock = pygame.time.Clock()
 
+# =========================================
 # COLORES
-
+# =========================================
 BG         = (235, 238, 245)
 WHITE      = (255, 255, 255)
 BLACK      = (30,  30,  40)
@@ -51,8 +53,9 @@ for i in range(1, 200):
         (i * 127 + 50) % 180 + 60,
     )
 
+# =========================================
 # FUENTES
-
+# =========================================
 try:
     TITLE_FONT  = pygame.font.SysFont("Montserrat", 32, bold=True)
     HEAD_FONT   = pygame.font.SysFont("Montserrat", 22, bold=True)
@@ -62,9 +65,9 @@ try:
 except:
     TITLE_FONT = HEAD_FONT = TEXT_FONT = SMALL_FONT = TINY_FONT = pygame.font.SysFont(None, 20)
 
-
-# Efectos elementos visuales
-
+# =========================================
+# HELPERS DE DIBUJO
+# =========================================
 def draw_shadow(surface, rect, radius=12, blur=20):
     """Dibuja una sombra suave debajo de un rect."""
     shadow_surf = pygame.Surface((rect.width + blur * 2, rect.height + blur * 2), pygame.SRCALPHA)
@@ -92,9 +95,9 @@ def clip_text(font, text, max_width):
         text = text[:-1]
     return text + "…"
 
-
+# =========================================
 # CLASE BOTON
-
+# =========================================
 class Button:
     def __init__(self, x, y, width, height, text, color=None, text_color=WHITE,
                  radius=10, font=None, icon=None):
@@ -131,9 +134,9 @@ class Button:
                 event.button == 1 and
                 self.rect.collidepoint(event.pos))
 
-
-# INPUTS
-
+# =========================================
+# INPUT FIELD
+# =========================================
 class InputField:
     def __init__(self, x, y, width, height, value="", max_len=25, font=None):
         self.rect    = pygame.Rect(x, y, width, height)
@@ -166,9 +169,9 @@ class InputField:
                     self.value += event.unicode
         return self.active
 
-
-# ESTADOS GLOBAL
-
+# =========================================
+# ESTADO GLOBAL
+# =========================================
 cantidad_productos = 1
 procesos_config    = []   # list of dicts
 nombre_inputs      = []   # InputField per process
@@ -176,6 +179,8 @@ tarea_inputs       = []   # list[list[InputField]]
 
 scroll_y           = 0
 SCROLL_SPEED       = 35
+sim_scroll_y       = 0   # scroll vertical en pantalla de simulación
+sim_scroll_x       = 0   # scroll horizontal en pantalla de simulación
 
 simulador          = None
 simulation_running = False
@@ -186,12 +191,14 @@ error_timer        = 0
 
 TIME_EVENT = pygame.USEREVENT + 1
 
-# Mostrar estación por estación
-pasos_pendientes = []   
+# Estado de animación entre ciclos
+# Guardamos snapshots del estado para mostrar paso a paso
+pasos_pendientes = []   # lista de estados visuales a mostrar
 
 
+# =========================================
 # LÓGICA DE CONFIGURACIÓN
-
+# =========================================
 def agregar_proceso():
     idx = len(procesos_config)
     nuevo = {
@@ -283,13 +290,15 @@ def construir_simulador():
     simulacion_pausada = False
     simulation_done    = False
     # Capturar snapshot inicial para mostrarlo de inmediato
+    sim_scroll_y = 0
+    sim_scroll_x = 0
     pasos_pendientes.clear()
     snap0 = capturar_snapshot(simulador._Simulador__linea, simulador._Simulador__productos)
     pasos_pendientes.append(snap0)
 
-
-# HEADER 
-
+# =========================================
+# HEADER GENÉRICO
+# =========================================
 def draw_header(title, subtitle=""):
     pygame.draw.rect(screen, BLUE_DARK, (0, 0, WIDTH, 65))
     surf = TITLE_FONT.render("LinProd", True, WHITE)
@@ -300,9 +309,9 @@ def draw_header(title, subtitle=""):
         s = SMALL_FONT.render(subtitle, True, (160, 180, 230))
         screen.blit(s, (30 + surf.get_width() + sep.get_width() + 10, 26))
 
-
+# =========================================
 # PANTALLA: MENÚ PRINCIPAL
-
+# =========================================
 def draw_menu():
     screen.fill(BG)
     # Gradient-ish top band
@@ -325,8 +334,10 @@ def draw_menu():
 
     return btn
 
-# PANTALLA: CONFIGURACIÓN
 
+# =========================================
+# PANTALLA: CONFIGURACIÓN
+# =========================================
 def draw_configuration():
     global scroll_y, cantidad_productos, error_timer, error_msg
 
@@ -543,28 +554,54 @@ def capturar_snapshot(linea, productos_todos):
     return snap
 
 
+# =========================================
 # PANTALLA: SIMULACIÓN
 # Columnas = Procesos  |  Dentro = Tareas apiladas
 # Dibuja desde un snapshot (estado inmutable)
-
+# =========================================
 def draw_simulation_snap(snap):
-    """Dibuja la pantalla de simulación a partir de un snapshot."""
+    """Dibuja la pantalla de simulación con scroll vertical y horizontal."""
+    global sim_scroll_y, sim_scroll_x
+
     procesos_snap = snap["procesos"]
     n_proc        = len(procesos_snap)
     max_tasks     = max((len(p["tareas"]) for p in procesos_snap), default=1)
 
-    MARGIN  = 20
-    ARROW_W = 30
-    PROC_W  = max(180, (WIDTH - MARGIN * 2 - ARROW_W * (n_proc - 1)) // max(n_proc, 1))
-    TASK_H  = max(110, (HEIGHT - 165) // max(max_tasks, 1) - 10)
-    COL_TOP = 80
+    MARGIN   = 20
+    ARROW_W  = 30
+    TASK_H   = 120
+    HEADER_H = 38
+    COL_TOP  = 80
+    SB_H     = 10   # altura scrollbar horizontal
+
+    # Ancho ideal por proceso (intenta que quepan todos)
+    available_w  = WIDTH - MARGIN * 2 - ARROW_W * max(n_proc - 1, 0)
+    ideal_proc_w = available_w // max(n_proc, 1)
+    PROC_W       = max(180, ideal_proc_w)   # mínimo 180px por proceso
+
+    # Área visible y contenido total
+    visible_w = WIDTH
+    visible_h = HEIGHT - COL_TOP - 65 - SB_H
+    content_w = MARGIN * 2 + n_proc * PROC_W + max(n_proc - 1, 0) * ARROW_W
+    content_h = HEADER_H + 8 + max_tasks * (TASK_H + 8)
+
+    max_scroll_x = max(0, content_w - visible_w)
+    max_scroll_y = max(0, content_h - visible_h)
+    sim_scroll_x = max(-max_scroll_x, min(0, sim_scroll_x))
+    sim_scroll_y = max(-max_scroll_y, min(0, sim_scroll_y))
+
+    # Zona de clip para que nada se salga del área de contenido
+    clip_area = pygame.Rect(0, COL_TOP, WIDTH, visible_h)
+    screen.set_clip(clip_area)
 
     for proc_idx, proc_snap in enumerate(procesos_snap):
         accent = PROCESS_COLORS[proc_idx % len(PROCESS_COLORS)]
         px = MARGIN + proc_idx * (PROC_W + ARROW_W)
 
         # ── Cabecera proceso ─────────────────────────────────────────
-        header_rect = pygame.Rect(px, COL_TOP, PROC_W, 38)
+        base_y = COL_TOP + sim_scroll_y
+        real_px = px + sim_scroll_x
+        header_rect = pygame.Rect(real_px, base_y, PROC_W, HEADER_H)
         draw_rounded_rect(screen, accent, header_rect, 10)
         type_tag = " [I]" if proc_snap["es_inicial"] else (" [F]" if proc_snap["es_final"] else "")
         h_text = clip_text(SMALL_FONT, proc_snap["nombre"] + type_tag, PROC_W - 16)
@@ -572,8 +609,8 @@ def draw_simulation_snap(snap):
 
         # ── Tarjetas de tarea ────────────────────────────────────────
         for t_idx, tsnap in enumerate(proc_snap["tareas"]):
-            ty   = COL_TOP + 48 + t_idx * (TASK_H + 8)
-            card = pygame.Rect(px, ty, PROC_W, TASK_H)
+            ty   = base_y + HEADER_H + 8 + t_idx * (TASK_H + 8)
+            card = pygame.Rect(real_px, ty, PROC_W, TASK_H)
 
             ocupada  = tsnap["ocupada"]
             card_bg  = (255, 247, 247) if ocupada else WHITE
@@ -583,13 +620,13 @@ def draw_simulation_snap(snap):
 
             # Nombre + ciclos
             screen.blit(HEAD_FONT.render(clip_text(HEAD_FONT, tsnap["nombre"], PROC_W - 20),
-                                         True, BLACK), (px + 10, ty + 8))
+                                         True, BLACK), (real_px + 10, ty + 8))
             screen.blit(TINY_FONT.render(f"Ciclos: {tsnap['tiempo']}", True, GRAY),
-                        (px + 10, ty + 30))
+                        (real_px + 10, ty + 30))
 
             # ── Slot de PROCESANDO ────────────────────────────────────
             slot_size = 44
-            slot_x    = px + PROC_W - slot_size - 10
+            slot_x    = real_px + PROC_W - slot_size - 10
             slot_y    = ty + 10
             slot_rect = pygame.Rect(slot_x, slot_y, slot_size, slot_size)
             slot_bg   = (220, 230, 255) if ocupada else (230, 235, 245)
@@ -618,39 +655,63 @@ def draw_simulation_snap(snap):
             # ── Cola de espera ────────────────────────────────────────
             cola_ids     = tsnap["cola_ids"]
             cola_label_y = ty + 48
-            screen.blit(TINY_FONT.render("Cola:", True, GRAY), (px + 10, cola_label_y))
+            screen.blit(TINY_FONT.render("Cola:", True, GRAY), (real_px + 10, cola_label_y))
 
-            avail_w  = slot_x - px - 16
+            avail_w  = slot_x - real_px - 16
             r_c      = 11
             gap      = 4
             max_show = max(1, avail_w // (r_c * 2 + gap))
             for ci, cid in enumerate(cola_ids[:max_show]):
                 pcol = PRODUCT_COLORS.get((cid - 1) % 199 + 1, BLUE)
-                cx_c = px + 10 + ci * (r_c * 2 + gap) + r_c
+                cx_c = real_px + 10 + ci * (r_c * 2 + gap) + r_c
                 cy_c = cola_label_y + 18
                 pygame.draw.circle(screen, pcol, (cx_c, cy_c), r_c)
                 ns = TINY_FONT.render(str(cid), True, WHITE)
                 screen.blit(ns, ns.get_rect(center=(cx_c, cy_c)))
             if len(cola_ids) > max_show:
-                ex_x = px + 10 + max_show * (r_c * 2 + gap)
+                ex_x = real_px + 10 + max_show * (r_c * 2 + gap)
                 screen.blit(TINY_FONT.render(f"+{len(cola_ids) - max_show}", True, GRAY),
                             (ex_x, cola_label_y + 10))
 
             # Ciclos restantes (si está ocupada)
             if ocupada:
                 rs = TINY_FONT.render(f"Restante: {tsnap['restante']}", True, ORANGE)
-                screen.blit(rs, (px + 10, ty + TASK_H - 18))
+                screen.blit(rs, (real_px + 10, ty + TASK_H - 18))
 
         # ── Flecha → siguiente proceso ────────────────────────────────
         if proc_idx < n_proc - 1:
-            ax = px + PROC_W + 4
-            ay = COL_TOP + 38 + max_tasks * (TASK_H + 8) // 2
+            ax = real_px + PROC_W + 4
+            ay = base_y + HEADER_H + max_tasks * (TASK_H + 8) // 2
             pygame.draw.line(screen, BLUE, (ax, ay), (ax + ARROW_W - 8, ay), 2)
             pygame.draw.polygon(screen, BLUE, [
                 (ax + ARROW_W - 8, ay - 6),
                 (ax + ARROW_W - 8, ay + 6),
                 (ax + ARROW_W,     ay),
             ])
+
+    screen.set_clip(None)
+
+    # ── Scrollbar vertical (derecha) ──────────────────────────────────
+    if max_scroll_y > 0:
+        vx  = WIDTH - 10
+        vth = max(30, int(visible_h * visible_h / content_h))
+        vpct = (-sim_scroll_y) / max_scroll_y
+        vy  = COL_TOP + int(vpct * (visible_h - vth))
+        pygame.draw.rect(screen, LIGHT, pygame.Rect(vx, COL_TOP, 6, visible_h), border_radius=3)
+        pygame.draw.rect(screen, BLUE,  pygame.Rect(vx, vy, 6, vth), border_radius=3)
+
+    # ── Scrollbar horizontal (abajo del área de contenido) ───────────
+    if max_scroll_x > 0:
+        hbar_y = COL_TOP + visible_h
+        hth    = max(40, int(visible_w * visible_w / content_w))
+        hpct   = (-sim_scroll_x) / max_scroll_x
+        hx     = int(hpct * (visible_w - hth))
+        pygame.draw.rect(screen, LIGHT, pygame.Rect(0, hbar_y, visible_w, SB_H), border_radius=3)
+        pygame.draw.rect(screen, BLUE,  pygame.Rect(hx, hbar_y, hth, SB_H), border_radius=3)
+        # Hint si el usuario aún no scrolleó
+        if sim_scroll_x == 0:
+            hint = TINY_FONT.render("Shift + rueda para ver más procesos →", True, GRAY)
+            screen.blit(hint, hint.get_rect(centerx=WIDTH//2, y=hbar_y - 1))
 
     # ── Barra inferior: completados ───────────────────────────────────
     completados = snap["completados"]
@@ -712,9 +773,9 @@ def draw_simulation():
     reconf_btn.draw(screen)
 
     return pause_btn, report_btn, reconf_btn
-
+# =========================================
 # PANTALLA: REPORTE
-
+# =========================================
 def draw_report():
     screen.fill(BG)
     draw_header("Reporte Final", "Estadísticas de la simulación completada")
@@ -814,10 +875,11 @@ def draw_report():
     return back_btn, reconf_btn, reinit_btn
 
 
+# =========================================
 # LOOP PRINCIPAL
-
+# =========================================
 def main():
-    global scene, scroll_y, cantidad_productos
+    global scene, scroll_y, sim_scroll_y, sim_scroll_x, cantidad_productos
     global simulacion_pausada, simulador, simulation_done, pasos_pendientes
 
     scene = "menu"
@@ -831,6 +893,7 @@ def main():
     pygame.time.set_timer(TIME_EVENT, 800)  # 800 ms por ciclo
 
     while running:
+        # ---- Variables de retorno de draw ----
         start_btn   = None
         add_proc    = None
         start_sim   = None
@@ -889,6 +952,14 @@ def main():
                 scroll_y -= event.y * SCROLL_SPEED
                 total_h = len(procesos_config) * 310
                 scroll_y = max(-(total_h - 400), min(0, scroll_y))
+
+            # Scroll en simulación
+            if scene == "simulation" and event.type == pygame.MOUSEWHEEL:
+                mods = pygame.key.get_mods()
+                if mods & pygame.KMOD_SHIFT:
+                    sim_scroll_x += event.y * SCROLL_SPEED
+                else:
+                    sim_scroll_y += event.y * SCROLL_SPEED
 
             # Forward keyboard to inputs
             if scene == "config":
