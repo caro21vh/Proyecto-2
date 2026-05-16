@@ -440,13 +440,15 @@ class Pantallas:
             productos = est["simulador"]._Simulador__productos
             self._draw_report_content(linea, productos)
 
-        back_btn   = Button(40,  C.HEIGHT - 60, 170, 44, "Menú",          C.GRAY,   radius=10, font=C.TEXT_FONT)
-        reconf_btn = Button(220, C.HEIGHT - 60, 200, 44, "Reconfigurar",  C.BLUE,   radius=10, font=C.TEXT_FONT)
-        reinit_btn = Button(430, C.HEIGHT - 60, 200, 44, "Reiniciar sim.", C.TEAL,  radius=10, font=C.TEXT_FONT)
+        back_btn   = Button(40,  C.HEIGHT - 60, 170, 44, "Menú",              C.GRAY,  radius=10, font=C.TEXT_FONT)
+        reconf_btn = Button(220, C.HEIGHT - 60, 200, 44, "Reconfigurar",      C.BLUE,  radius=10, font=C.TEXT_FONT)
+        reinit_btn = Button(430, C.HEIGHT - 60, 200, 44, "Reiniciar sim.",    C.TEAL,  radius=10, font=C.TEXT_FONT)
+        resume_btn = Button(640, C.HEIGHT - 60, 220, 44, "Volver a simulación", C.GREEN, radius=10, font=C.TEXT_FONT)
         back_btn.draw(s)
         reconf_btn.draw(s)
         reinit_btn.draw(s)
-        return back_btn, reconf_btn, reinit_btn
+        resume_btn.draw(s)
+        return back_btn, reconf_btn, reinit_btn, resume_btn
 
     def _draw_report_content(self, linea, productos):
         s = self.screen

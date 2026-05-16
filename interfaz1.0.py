@@ -167,7 +167,7 @@ def main():
         elif scene == "simulation":
             pause_btn, report_btn, reconf_btn = pantallas.draw_simulation()
         elif scene == "report":
-            report_back, report_rec, report_rei = pantallas.draw_report()
+            report_back, report_rec, report_rei, report_resume = pantallas.draw_report()
  
         # Eventos
         for event in pygame.event.get():
@@ -288,6 +288,8 @@ def main():
                     est["scene"] = "config"
                 if report_rei and report_rei.clicked(event):
                     construir_simulador()
+                    est["scene"] = "simulation"
+                if report_resume and report_resume.clicked(event):
                     est["scene"] = "simulation"
  
         pygame.display.update()
